@@ -103,4 +103,4 @@ dotnet publish MemoryOptimizer.Gui -c Release -r win-x64 \
 
 ## 许可证
 
-代码提取自 [PCL-CE](https://github.com/PCL-Community/PCL-CE)，遵循其许可证条款。
+[Apache 2.0](LICENSE) — 与 PCL-CE 保持一致。
