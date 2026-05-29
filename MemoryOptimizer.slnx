@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MemoryOptimizer.Cli/MemoryOptimizer.Cli.csproj" />
+  <Project Path="MemoryOptimizer.Core/MemoryOptimizer.Core.csproj" />
+  <Project Path="MemoryOptimizer.Gui/MemoryOptimizer.Gui.csproj" />
+</Solution>
