@@ -14,38 +14,33 @@ partial class MainForm
     {
         SuspendLayout();
 
-        // ── 窗口设置 ──
+        // ── 窗口 ──
         Text = "MemoryOptimizer";
-        ClientSize = new Size(420, 480);
-        MinimumSize = new Size(420, 480);
-        MaximumSize = new Size(420, 480);
+        ClientSize = new Size(400, 400);
+        MinimumSize = new Size(400, 400);
+        MaximumSize = new Size(400, 400);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         BackColor = Color.FromArgb(18, 18, 18);
         ForeColor = Color.White;
         Font = new Font("Segoe UI", 10);
-        Padding = new Padding(0);
 
-        // ── 顶部标题栏 ──
-        var pnlTitle = new TableLayoutPanel
+        // ── 顶部栏 ──
+        var pnlTop = new Panel
         {
             Dock = DockStyle.Top,
             Height = 48,
-            BackColor = Color.FromArgb(24, 24, 24),
-            Padding = new Padding(20, 0, 20, 0),
-            ColumnCount = 2,
-            RowCount = 1
+            BackColor = Color.FromArgb(24, 24, 24)
         };
-        pnlTitle.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        pnlTitle.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
         lblTitle = new Label
         {
             Text = "Memory Optimizer",
-            Dock = DockStyle.Fill,
+            Location = new Point(20, 0),
+            Size = new Size(260, 48),
             TextAlign = ContentAlignment.MiddleLeft,
-            Font = new Font("Segoe UI", 13, FontStyle.Bold),
+            Font = new Font("Segoe UI", 12, FontStyle.Bold),
             ForeColor = Color.White,
             BackColor = Color.Transparent
         };
@@ -53,21 +48,22 @@ partial class MainForm
         lblStatus = new Label
         {
             Text = "● 就绪",
-            Dock = DockStyle.Fill,
+            Location = new Point(280, 0),
+            Size = new Size(100, 48),
             TextAlign = ContentAlignment.MiddleRight,
             Font = new Font("Segoe UI", 9),
             ForeColor = Color.FromArgb(100, 200, 100),
-            BackColor = Color.Transparent,
-            AutoSize = true
+            BackColor = Color.Transparent
         };
 
-        pnlTitle.Controls.Add(lblTitle, 0, 0);
-        pnlTitle.Controls.Add(lblStatus, 1, 0);
+        pnlTop.Controls.Add(lblTitle);
+        pnlTop.Controls.Add(lblStatus);
 
-        // ── 内存指示器 ──
+        // ── 圆环仪表 ──
         pnlGauge = new Panel
         {
-            Size = new Size(160, 160),
+            Location = new Point(20, 70),
+            Size = new Size(140, 140),
             BackColor = Color.Transparent
         };
         pnlGauge.Paint += DrawGauge;
@@ -75,124 +71,105 @@ partial class MainForm
         lblGaugePct = new Label
         {
             Text = "--%",
-            Font = new Font("Segoe UI", 32, FontStyle.Bold),
+            Font = new Font("Segoe UI", 30, FontStyle.Bold),
             ForeColor = Color.White,
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleCenter,
-            Size = new Size(160, 44),
-            Location = new Point(0, 52)
+            Location = new Point(0, 30),
+            Size = new Size(140, 56)
         };
         lblGaugeLabel = new Label
         {
             Text = "内存负载",
             Font = new Font("Segoe UI", 10),
-            ForeColor = Color.FromArgb(160, 160, 160),
+            ForeColor = Color.FromArgb(140, 140, 140),
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleCenter,
-            Size = new Size(160, 22),
-            Location = new Point(0, 96)
+            Location = new Point(0, 88),
+            Size = new Size(140, 20)
         };
         pnlGauge.Controls.Add(lblGaugePct);
         pnlGauge.Controls.Add(lblGaugeLabel);
 
-        // ── 内存详情卡片 ──
-        var pnlDetails = new TableLayoutPanel
+        // ── 详情 ──
+        lblDetailTotal = new Label
         {
-            ColumnCount = 1,
-            RowCount = 3,
-            AutoSize = true,
-            BackColor = Color.FromArgb(28, 28, 30)
+            Text = "总内存",
+            Location = new Point(190, 88),
+            Size = new Size(190, 24),
+            Font = new Font("Segoe UI", 10),
+            ForeColor = Color.FromArgb(140, 140, 140),
+            BackColor = Color.Transparent
         };
-        pnlDetails.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        pnlDetails.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        pnlDetails.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-        lblTotal = MakeDetailRow("总内存", "--");
-        lblUsed = MakeDetailRow("已用", "--");
-        lblAvail = MakeDetailRow("可用", "--");
-
-        pnlDetails.Controls.Add(lblTotal, 0, 0);
-        pnlDetails.Controls.Add(lblUsed, 0, 1);
-        pnlDetails.Controls.Add(lblAvail, 0, 2);
-
-        // ── 中部布局：gauge + details ──
-        var pnlCenter = new FlowLayoutPanel
+        lblDetailUsed = new Label
         {
-            FlowDirection = FlowDirection.LeftToRight,
-            AutoSize = true,
-            BackColor = Color.Transparent,
-            Padding = new Padding(30, 30, 30, 10)
+            Text = "已用",
+            Location = new Point(190, 120),
+            Size = new Size(190, 24),
+            Font = new Font("Segoe UI", 10),
+            ForeColor = Color.FromArgb(140, 140, 140),
+            BackColor = Color.Transparent
         };
-        pnlCenter.Controls.Add(pnlGauge);
-
-        var pnlDetailWrap = new Panel
+        lblDetailAvail = new Label
         {
-            Size = new Size(180, 160),
-            BackColor = Color.Transparent,
-            Padding = new Padding(20, 20, 0, 0)
+            Text = "可用",
+            Location = new Point(190, 152),
+            Size = new Size(190, 24),
+            Font = new Font("Segoe UI", 10),
+            ForeColor = Color.FromArgb(140, 140, 140),
+            BackColor = Color.Transparent
         };
-        pnlDetails.Location = new Point(0, 0);
-        pnlDetailWrap.Controls.Add(pnlDetails);
-        pnlCenter.Controls.Add(pnlDetailWrap);
 
-        // ── 结果摘要 ──
+        // ── 结果 ──
         lblResult = new Label
         {
             Text = "",
-            Font = new Font("Segoe UI", 14, FontStyle.Bold),
-            ForeColor = Color.FromArgb(80, 200, 120),
+            Location = new Point(20, 240),
+            Size = new Size(360, 30),
+            Font = new Font("Segoe UI", 16, FontStyle.Bold),
+            ForeColor = Color.FromArgb(100, 200, 100),
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleCenter,
-            AutoSize = false,
-            Size = new Size(360, 30),
             Visible = false
         };
 
-        // ── 优化按钮 ──
+        // ── 按钮 ──
         btnOptimize = new Button
         {
             Text = "优化内存",
             FlatStyle = FlatStyle.Flat,
-            FlatAppearance = { BorderSize = 0 },
             BackColor = Color.FromArgb(50, 140, 240),
             ForeColor = Color.White,
             Font = new Font("Segoe UI", 14, FontStyle.Bold),
             Cursor = Cursors.Hand,
-            Size = new Size(360, 50)
+            Location = new Point(20, 310),
+            Size = new Size(360, 52),
+            Enabled = false
         };
+        btnOptimize.FlatAppearance.BorderSize = 0;
         btnOptimize.Click += BtnOptimize_Click;
-        btnOptimize.Enabled = false;
 
-        // ── 底部布局 ──
-        var pnlBottom = new FlowLayoutPanel
+        // ── 分隔线 ──
+        var line = new Panel
         {
-            FlowDirection = FlowDirection.TopDown,
-            AutoSize = true,
-            BackColor = Color.Transparent,
-            Padding = new Padding(30, 0, 30, 0)
+            Location = new Point(20, 230),
+            Size = new Size(360, 1),
+            BackColor = Color.FromArgb(50, 50, 55)
         };
-        pnlBottom.Controls.Add(lblResult);
-        pnlBottom.Controls.Add(btnOptimize);
 
         // ── 组装 ──
-        Controls.Add(pnlTitle);
-        Controls.Add(pnlCenter);
-        Controls.Add(pnlBottom);
-
-        // ── 底部面板（居中 btn + result） ──
-        pnlCenter.Location = new Point(0, 48);
-        lblResult.Location = new Point(0, 0);
-        btnOptimize.Location = new Point(0, lblResult.Visible ? 38 : 0);
-        pnlBottom.Location = new Point(0, 260);
+        Controls.AddRange([
+            pnlTop, pnlGauge,
+            lblDetailTotal, lblDetailUsed, lblDetailAvail,
+            line, lblResult, btnOptimize
+        ]);
 
         ResumeLayout(false);
-        PerformLayout();
     }
 
-    // ── 控件字段 ──
     private Label lblTitle = null!, lblStatus = null!;
     private Label lblGaugePct = null!, lblGaugeLabel = null!;
-    private Label lblTotal = null!, lblUsed = null!, lblAvail = null!;
+    private Label lblDetailTotal = null!, lblDetailUsed = null!, lblDetailAvail = null!;
     private Label lblResult = null!;
     private Button btnOptimize = null!;
     private System.Windows.Forms.Timer? timer;
@@ -200,40 +177,12 @@ partial class MainForm
     private double _memLoad;
     private bool _isRunning;
 
-    // ── 辅助 ──
-    private static Label MakeDetailRow(string key, string val)
-    {
-        var lbl = new Label
-        {
-            Text = "",
-            Font = new Font("Segoe UI", 10),
-            ForeColor = Color.White,
-            BackColor = Color.Transparent,
-            AutoSize = true,
-            Padding = new Padding(0, 6, 0, 6)
-        };
-        lbl.Paint += (s, e) =>
-        {
-            var g = e.Graphics!;
-            using var keyBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-            using var valBrush = new SolidBrush(Color.White);
-            using var keyFont = new Font("Segoe UI", 10);
-            using var valFont = new Font("Segoe UI", 10, FontStyle.Bold);
-            g.DrawString(key, keyFont, keyBrush, 0, 8);
-            var keyW = g.MeasureString(key, keyFont).Width;
-            g.DrawString(val, valFont, valBrush, keyW + 12, 8);
-        };
-        lbl.Tag = new { Key = key, Value = val };
-        lbl.Size = new Size(160, 30);
-        return lbl;
-    }
-
     private void DrawGauge(object? sender, PaintEventArgs e)
     {
         var g = e.Graphics!;
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-        var rect = new Rectangle(10, 10, 140, 140);
+        var rect = new Rectangle(8, 8, 124, 124);
         var load = (float)(_memLoad / 100.0);
         var color = load switch
         {
@@ -242,12 +191,10 @@ partial class MainForm
             _ => Color.FromArgb(50, 140, 240)
         };
 
-        // 背景环
-        using var bgPen = new Pen(Color.FromArgb(50, 50, 55), 12);
+        using var bgPen = new Pen(Color.FromArgb(50, 50, 55), 11);
         g.DrawArc(bgPen, rect, 135, 270);
 
-        // 前景弧
-        using var fgPen = new Pen(color, 12);
+        using var fgPen = new Pen(color, 11);
         g.DrawArc(fgPen, rect, 135, 270 * load);
     }
 }

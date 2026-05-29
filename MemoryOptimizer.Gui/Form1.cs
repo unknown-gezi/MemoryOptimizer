@@ -10,7 +10,6 @@ public partial class MainForm : Form
     {
         InitializeComponent();
 
-        // 管理员检查
         Load += (_, _) =>
         {
             if (!new WindowsPrincipal(WindowsIdentity.GetCurrent())
@@ -27,13 +26,11 @@ public partial class MainForm : Form
             UpdateDisplay();
         };
 
-        // 每秒刷新
         timer = new System.Windows.Forms.Timer { Interval = 1000 };
         timer.Tick += (_, _) => UpdateDisplay();
         timer.Start();
     }
 
-    // ── 更新显示 ──
     private void UpdateDisplay()
     {
         try
@@ -44,11 +41,6 @@ public partial class MainForm : Form
             _memLoad = NtInterop.GetMemoryLoadPercent();
 
             lblGaugePct.Text = $"{_memLoad:F0}%";
-            UpdateDetailRow(lblTotal, FormatHelper.BytesToReadable((long)total));
-            UpdateDetailRow(lblUsed, FormatHelper.BytesToReadable((long)used));
-            UpdateDetailRow(lblAvail, FormatHelper.BytesToReadable((long)avail));
-
-            // 负载颜色
             lblGaugePct.ForeColor = _memLoad switch
             {
                 > 85 => Color.FromArgb(240, 80, 60),
@@ -56,18 +48,15 @@ public partial class MainForm : Form
                 _ => Color.White
             };
 
+            lblDetailTotal.Text = $"总内存    {FormatHelper.BytesToReadable((long)total)}";
+            lblDetailUsed.Text  = $"已用       {FormatHelper.BytesToReadable((long)used)}";
+            lblDetailAvail.Text = $"可用       {FormatHelper.BytesToReadable((long)avail)}";
+
             pnlGauge.Invalidate();
         }
         catch { }
     }
 
-    private static void UpdateDetailRow(Label lbl, string value)
-    {
-        lbl.Tag = new { Key = ((dynamic)lbl.Tag!).Key, Value = value };
-        lbl.Invalidate();
-    }
-
-    // ── 优化按钮 ──
     private async void BtnOptimize_Click(object? sender, EventArgs e)
     {
         if (_isRunning) return;
