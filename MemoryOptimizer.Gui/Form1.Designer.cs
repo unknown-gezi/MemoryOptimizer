@@ -1,9 +1,8 @@
-#nullable enable
 namespace MemoryOptimizer.Gui;
 
 partial class MainForm
 {
-    private System.ComponentModel.IContainer? components = null;
+    private System.ComponentModel.IContainer? components;
 
     protected override void Dispose(bool disposing)
     {
@@ -11,157 +10,244 @@ partial class MainForm
         base.Dispose(disposing);
     }
 
-    #region Windows Form Designer generated code
-
     private void InitializeComponent()
     {
-        components = new System.ComponentModel.Container();
-        AutoScaleMode = AutoScaleMode.Font;
-        ClientSize = new Size(520, 620);
-        MinimumSize = new Size(536, 660);
+        SuspendLayout();
+
+        // ── 窗口设置 ──
         Text = "MemoryOptimizer";
+        ClientSize = new Size(420, 480);
+        MinimumSize = new Size(420, 480);
+        MaximumSize = new Size(420, 480);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
-        BackColor = Color.FromArgb(30, 30, 30);
+        BackColor = Color.FromArgb(18, 18, 18);
         ForeColor = Color.White;
         Font = new Font("Segoe UI", 10);
+        Padding = new Padding(0);
 
-        // ── 标题 ──
-        var lblTitle = NewLabel("MemoryOptimizer", new Point(20, 18), 16, FontStyle.Bold, Color.Cyan);
-        lblTitle.AutoSize = true;
-
-        var lblSub = NewLabel("从 PCL-CE 提取的 Windows 内存优化工具", new Point(20, 48), 9,
-            FontStyle.Regular, Color.Gray);
-        lblSub.AutoSize = true;
-
-        // ── 内存状态面板 ──
-        var pnlStatus = new Panel
+        // ── 顶部标题栏 ──
+        var pnlTitle = new TableLayoutPanel
         {
-            Location = new Point(20, 78),
-            Size = new Size(480, 90),
-            BackColor = Color.FromArgb(45, 45, 48),
-            BorderStyle = BorderStyle.FixedSingle
+            Dock = DockStyle.Top,
+            Height = 48,
+            BackColor = Color.FromArgb(24, 24, 24),
+            Padding = new Padding(20, 0, 20, 0),
+            ColumnCount = 2,
+            RowCount = 1
         };
-        lblMemTotal = NewLabel("总内存: --", new Point(14, 10), 10, FontStyle.Regular, Color.LightGray);
-        lblMemUsed = NewLabel("已用: --", new Point(14, 30), 10, FontStyle.Regular, Color.LightGray);
-        lblMemAvail = NewLabel("可用: --", new Point(250, 10), 10, FontStyle.Regular, Color.LightGray);
-        lblMemLoad = NewLabel("负载: --", new Point(250, 30), 10, FontStyle.Regular, Color.LightGray);
-        progressMem = new ProgressBar
-        {
-            Location = new Point(14, 56),
-            Size = new Size(452, 20),
-            Style = ProgressBarStyle.Continuous,
-            ForeColor = Color.SteelBlue,
-            BackColor = Color.FromArgb(60, 60, 60)
-        };
-        pnlStatus.Controls.AddRange([lblMemTotal, lblMemUsed, lblMemAvail, lblMemLoad, progressMem]);
+        pnlTitle.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        pnlTitle.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        // ── 操作选择区域 ──
-        var grpOps = new GroupBox
+        lblTitle = new Label
         {
-            Text = "优化操作",
-            Location = new Point(20, 185),
-            Size = new Size(480, 240),
-            BackColor = Color.FromArgb(30, 30, 30),
-            ForeColor = Color.White
+            Text = "Memory Optimizer",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = new Font("Segoe UI", 13, FontStyle.Bold),
+            ForeColor = Color.White,
+            BackColor = Color.Transparent
         };
 
-        // Select All / Deselect All
-        var btnSelAll = NewButton("全选", new Point(14, 22), new Size(70, 26), 9, Color.DimGray);
-        btnSelAll.Click += (_, _) => SetAllChecked(true);
-        var btnSelNone = NewButton("取消", new Point(90, 22), new Size(70, 26), 9, Color.DimGray);
-        btnSelNone.Click += (_, _) => SetAllChecked(false);
-
-        // 7 个操作的 CheckBox
-        int y = 56;
-        int i = 0;
-        foreach (var (name, desc, _) in Core.MemSwap.AllOperations)
+        lblStatus = new Label
         {
-            var cb = new CheckBox
-            {
-                Text = $"{desc} ({name})",
-                Location = new Point(18, y),
-                AutoSize = true,
-                Checked = true,
-                Tag = name,
-                ForeColor = Color.White
-            };
-            cb.CheckedChanged += (_, _) => UpdateButtonState();
-            checkOps.Add(cb);
-            grpOps.Controls.Add(cb);
-            y += 26;
-            i++;
-        }
+            Text = "● 就绪",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleRight,
+            Font = new Font("Segoe UI", 9),
+            ForeColor = Color.FromArgb(100, 200, 100),
+            BackColor = Color.Transparent,
+            AutoSize = true
+        };
 
-        grpOps.Controls.AddRange([btnSelAll, btnSelNone]);
+        pnlTitle.Controls.Add(lblTitle, 0, 0);
+        pnlTitle.Controls.Add(lblStatus, 1, 0);
 
-        // ── 执行按钮 ──
+        // ── 内存指示器 ──
+        pnlGauge = new Panel
+        {
+            Size = new Size(160, 160),
+            BackColor = Color.Transparent
+        };
+        pnlGauge.Paint += DrawGauge;
+
+        lblGaugePct = new Label
+        {
+            Text = "--%",
+            Font = new Font("Segoe UI", 32, FontStyle.Bold),
+            ForeColor = Color.White,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Size = new Size(160, 44),
+            Location = new Point(0, 52)
+        };
+        lblGaugeLabel = new Label
+        {
+            Text = "内存负载",
+            Font = new Font("Segoe UI", 10),
+            ForeColor = Color.FromArgb(160, 160, 160),
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Size = new Size(160, 22),
+            Location = new Point(0, 96)
+        };
+        pnlGauge.Controls.Add(lblGaugePct);
+        pnlGauge.Controls.Add(lblGaugeLabel);
+
+        // ── 内存详情卡片 ──
+        var pnlDetails = new TableLayoutPanel
+        {
+            ColumnCount = 1,
+            RowCount = 3,
+            AutoSize = true,
+            BackColor = Color.FromArgb(28, 28, 30)
+        };
+        pnlDetails.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        pnlDetails.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        pnlDetails.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        lblTotal = MakeDetailRow("总内存", "--");
+        lblUsed = MakeDetailRow("已用", "--");
+        lblAvail = MakeDetailRow("可用", "--");
+
+        pnlDetails.Controls.Add(lblTotal, 0, 0);
+        pnlDetails.Controls.Add(lblUsed, 0, 1);
+        pnlDetails.Controls.Add(lblAvail, 0, 2);
+
+        // ── 中部布局：gauge + details ──
+        var pnlCenter = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            BackColor = Color.Transparent,
+            Padding = new Padding(30, 30, 30, 10)
+        };
+        pnlCenter.Controls.Add(pnlGauge);
+
+        var pnlDetailWrap = new Panel
+        {
+            Size = new Size(180, 160),
+            BackColor = Color.Transparent,
+            Padding = new Padding(20, 20, 0, 0)
+        };
+        pnlDetails.Location = new Point(0, 0);
+        pnlDetailWrap.Controls.Add(pnlDetails);
+        pnlCenter.Controls.Add(pnlDetailWrap);
+
+        // ── 结果摘要 ──
+        lblResult = new Label
+        {
+            Text = "",
+            Font = new Font("Segoe UI", 14, FontStyle.Bold),
+            ForeColor = Color.FromArgb(80, 200, 120),
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AutoSize = false,
+            Size = new Size(360, 30),
+            Visible = false
+        };
+
+        // ── 优化按钮 ──
         btnOptimize = new Button
         {
-            Text = "⚡ 执行优化",
-            Location = new Point(20, 440),
-            Size = new Size(480, 44),
-            Font = new Font("Segoe UI", 13, FontStyle.Bold),
+            Text = "优化内存",
             FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(0, 122, 204),
+            FlatAppearance = { BorderSize = 0 },
+            BackColor = Color.FromArgb(50, 140, 240),
             ForeColor = Color.White,
-            Cursor = Cursors.Hand
+            Font = new Font("Segoe UI", 14, FontStyle.Bold),
+            Cursor = Cursors.Hand,
+            Size = new Size(360, 50)
         };
-        btnOptimize.FlatAppearance.BorderSize = 0;
         btnOptimize.Click += BtnOptimize_Click;
+        btnOptimize.Enabled = false;
 
-        // ── 日志区域 ──
-        var grpLog = new GroupBox
+        // ── 底部布局 ──
+        var pnlBottom = new FlowLayoutPanel
         {
-            Text = "执行日志",
-            Location = new Point(20, 496),
-            Size = new Size(480, 106),
-            ForeColor = Color.White
+            FlowDirection = FlowDirection.TopDown,
+            AutoSize = true,
+            BackColor = Color.Transparent,
+            Padding = new Padding(30, 0, 30, 0)
         };
-        txtLog = new TextBox
-        {
-            Multiline = true,
-            ReadOnly = true,
-            ScrollBars = ScrollBars.Vertical,
-            Location = new Point(10, 22),
-            Size = new Size(460, 74),
-            BackColor = Color.FromArgb(30, 30, 30),
-            ForeColor = Color.LimeGreen,
-            BorderStyle = BorderStyle.None,
-            Font = new Font("Consolas", 9)
-        };
-        grpLog.Controls.Add(txtLog);
+        pnlBottom.Controls.Add(lblResult);
+        pnlBottom.Controls.Add(btnOptimize);
 
-        Controls.AddRange([
-            lblTitle, lblSub, pnlStatus, grpOps, btnOptimize, grpLog
-        ]);
+        // ── 组装 ──
+        Controls.Add(pnlTitle);
+        Controls.Add(pnlCenter);
+        Controls.Add(pnlBottom);
+
+        // ── 底部面板（居中 btn + result） ──
+        pnlCenter.Location = new Point(0, 48);
+        lblResult.Location = new Point(0, 0);
+        btnOptimize.Location = new Point(0, lblResult.Visible ? 38 : 0);
+        pnlBottom.Location = new Point(0, 260);
+
+        ResumeLayout(false);
+        PerformLayout();
     }
 
-    #endregion
-
     // ── 控件字段 ──
-    private Label lblMemTotal = null!, lblMemUsed = null!, lblMemAvail = null!, lblMemLoad = null!;
-    private ProgressBar progressMem = null!;
+    private Label lblTitle = null!, lblStatus = null!;
+    private Label lblGaugePct = null!, lblGaugeLabel = null!;
+    private Label lblTotal = null!, lblUsed = null!, lblAvail = null!;
+    private Label lblResult = null!;
     private Button btnOptimize = null!;
-    private TextBox txtLog = null!;
-    private readonly List<CheckBox> checkOps = [];
-    private System.Windows.Forms.Timer? refreshTimer;
+    private System.Windows.Forms.Timer? timer;
+    private Panel pnlGauge = null!;
+    private double _memLoad;
+    private bool _isRunning;
 
-    // ── Helper ──
-    private static Label NewLabel(string text, Point loc, float size, FontStyle style, Color color) => new()
+    // ── 辅助 ──
+    private static Label MakeDetailRow(string key, string val)
     {
-        Text = text, Location = loc,
-        Font = new Font("Segoe UI", size, style),
-        ForeColor = color, BackColor = Color.Transparent
-    };
+        var lbl = new Label
+        {
+            Text = "",
+            Font = new Font("Segoe UI", 10),
+            ForeColor = Color.White,
+            BackColor = Color.Transparent,
+            AutoSize = true,
+            Padding = new Padding(0, 6, 0, 6)
+        };
+        lbl.Paint += (s, e) =>
+        {
+            var g = e.Graphics!;
+            using var keyBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+            using var valBrush = new SolidBrush(Color.White);
+            using var keyFont = new Font("Segoe UI", 10);
+            using var valFont = new Font("Segoe UI", 10, FontStyle.Bold);
+            g.DrawString(key, keyFont, keyBrush, 0, 8);
+            var keyW = g.MeasureString(key, keyFont).Width;
+            g.DrawString(val, valFont, valBrush, keyW + 12, 8);
+        };
+        lbl.Tag = new { Key = key, Value = val };
+        lbl.Size = new Size(160, 30);
+        return lbl;
+    }
 
-    private static Button NewButton(string text, Point loc, Size sz, float size, Color back) => new()
+    private void DrawGauge(object? sender, PaintEventArgs e)
     {
-        Text = text, Location = loc, Size = sz,
-        Font = new Font("Segoe UI", size),
-        FlatStyle = FlatStyle.Flat,
-        BackColor = back, ForeColor = Color.White,
-        Cursor = Cursors.Hand
-    };
+        var g = e.Graphics!;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+        var rect = new Rectangle(10, 10, 140, 140);
+        var load = (float)(_memLoad / 100.0);
+        var color = load switch
+        {
+            > 0.85f => Color.FromArgb(240, 80, 60),
+            > 0.70f => Color.FromArgb(240, 180, 40),
+            _ => Color.FromArgb(50, 140, 240)
+        };
+
+        // 背景环
+        using var bgPen = new Pen(Color.FromArgb(50, 50, 55), 12);
+        g.DrawArc(bgPen, rect, 135, 270);
+
+        // 前景弧
+        using var fgPen = new Pen(color, 12);
+        g.DrawArc(fgPen, rect, 135, 270 * load);
+    }
 }

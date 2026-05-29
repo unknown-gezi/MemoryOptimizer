@@ -49,6 +49,7 @@ public static class NtInterop
     // ── 常量 ──
 
     public const uint SE_INCREASE_QUOTA_PRIVILEGE = 5;
+    public const uint SE_PROFILE_SINGLE_PROCESS_PRIVILEGE = 13;
 
     public enum SystemInformationClass
     {
@@ -103,34 +104,44 @@ public static class NtInterop
     private static bool _privilegeEnabled;
     private static readonly object _privLock = new();
 
-    /// <summary>一次性启用 SeIncreaseQuotaPrivilege，RtlAdjustPrivilege 失败时 fallback 到 AdjustTokenPrivileges</summary>
-    public static void EnsurePrivilege()
+    /// <summary>一次性启用所需特权（与 PCL-CE _AcquirePrivileges 一致）</summary>
+    public static void AcquirePrivileges()
     {
         if (_privilegeEnabled) return;
         lock (_privLock)
         {
             if (_privilegeEnabled) return;
 
-            // 方式1: RtlAdjustPrivilege（PCL-CE 原版方式）
-            var r = RtlAdjustPrivilege(SE_INCREASE_QUOTA_PRIVILEGE, true, true, out _);
+            // 方式1: RtlAdjustPrivilege（PCL-CE 原版方式，进程级）
+            RtlAdjustPrivilege(SE_PROFILE_SINGLE_PROCESS_PRIVILEGE, true, false, out _);
+            var r = RtlAdjustPrivilege(SE_INCREASE_QUOTA_PRIVILEGE, true, false, out _);
             if (r == 0) { _privilegeEnabled = true; return; }
 
-            // 方式2: AdjustTokenPrivileges（更标准的方式）
+            // 方式2: AdjustTokenPrivileges — 同时启用两个特权
             try
             {
                 if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, out var tok)) return;
                 try
                 {
-                    if (!LookupPrivilegeValue(null, SE_INCREASE_QUOTA_NAME, out var luid)) return;
-                    var tp = new TOKEN_PRIVILEGES { PrivilegeCount = 1, Luid = luid, Attributes = SE_PRIVILEGE_ENABLED };
-                    AdjustTokenPrivileges(tok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
-                    _privilegeEnabled = Marshal.GetLastWin32Error() != 1300; // 1300 = ERROR_NOT_ALL_ASSIGNED
+                    // 启用 SeIncreaseQuotaPrivilege
+                    if (LookupPrivilegeValue(null, SE_INCREASE_QUOTA_NAME, out var luid))
+                    {
+                        var tp = new TOKEN_PRIVILEGES { PrivilegeCount = 1, Luid = luid, Attributes = SE_PRIVILEGE_ENABLED };
+                        AdjustTokenPrivileges(tok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+                    }
+                    // 启用 SeProfileSingleProcessPrivilege
+                    if (LookupPrivilegeValue(null, "SeProfileSingleProcessPrivilege", out luid))
+                    {
+                        var tp = new TOKEN_PRIVILEGES { PrivilegeCount = 1, Luid = luid, Attributes = SE_PRIVILEGE_ENABLED };
+                        AdjustTokenPrivileges(tok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+                    }
+                    _privilegeEnabled = true;
                 }
                 finally { CloseHandle(tok); }
             }
             catch { /* 静默 */ }
 
-            if (!_privilegeEnabled) _privilegeEnabled = true; // 无论如何只试一次，不阻塞后续调用
+            _privilegeEnabled = true; // 无论如何不阻塞后续调用
         }
     }
 
@@ -139,46 +150,17 @@ public static class NtInterop
     /// <summary>启用特权（与 PCL-CE 保持兼容，内部使用 fallback 机制）</summary>
     public static bool SetPrivilege(uint privilege, bool enable, bool currentThread)
     {
-        EnsurePrivilege();
+        AcquirePrivileges();
         return true; // best-effort，不抛异常
     }
 
-    /// <summary>设置系统信息，传入一个 int 值（4 字节）</summary>
-    public static void SetSystemInfo(SystemInformationClass infoClass, int value)
+    /// <summary>调用 NtSetSystemInformation — 与 PCL-CE 完全一致的签名</summary>
+    public static void SetSystemInformation(
+        SystemInformationClass infoClass, IntPtr info, uint infoLength)
     {
-        var val = value;
-        var ptr = Marshal.AllocHGlobal(sizeof(int));
-        try
-        {
-            Marshal.WriteInt32(ptr, val);
-            var result = NtSetSystemInformation((int)infoClass, ptr, sizeof(int));
-            if (result != 0)
-                ThrowLastWin32Error((int)RtlNtStatusToDosError(result));
-        }
-        finally { Marshal.FreeHGlobal(ptr); }
-    }
-
-    /// <summary>设置系统信息，空缓冲区</summary>
-    public static void SetSystemInfo(SystemInformationClass infoClass)
-    {
-        var result = NtSetSystemInformation((int)infoClass, IntPtr.Zero, 0);
+        var result = NtSetSystemInformation((int)infoClass, info, (int)infoLength);
         if (result != 0)
             ThrowLastWin32Error((int)RtlNtStatusToDosError(result));
-    }
-
-    /// <summary>设置文件缓存信息（两个 DWORD = 8 字节）</summary>
-    public static void SetFileCacheInfo(long value)
-    {
-        var val = value;
-        var ptr = Marshal.AllocHGlobal(sizeof(long));
-        try
-        {
-            Marshal.WriteInt64(ptr, val);
-            var result = NtSetSystemInformation((int)SystemInformationClass.SystemFileCacheInformationEx, ptr, sizeof(long));
-            if (result != 0)
-                ThrowLastWin32Error((int)RtlNtStatusToDosError(result));
-        }
-        finally { Marshal.FreeHGlobal(ptr); }
     }
 
     // ── 内存查询 ──
