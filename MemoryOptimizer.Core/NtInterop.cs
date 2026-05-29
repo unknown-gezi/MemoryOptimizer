@@ -56,13 +56,22 @@ public static class NtInterop
         SystemCombinePhysicalMemoryInformation = 130,
         SystemRegistryReconciliationInformation = 155
     }
-
-    public static bool SetPrivilege(bool enable)
+    /// <summary>设置 SeIncreaseQuotaPrivilege 特权状态（best-effort，失败时静默忽略）</summary>
+    public static void SetPrivilegeSilent(bool enable)
     {
-        var result = RtlAdjustPrivilege(SE_INCREASE_QUOTA_PRIVILEGE, enable, true, out var wasEnabled);
-        if (result != 0)
-            ThrowLastWin32Error((int)RtlNtStatusToDosError(result));
-        return wasEnabled;
+        try
+        {
+            var result = RtlAdjustPrivilege(SE_INCREASE_QUOTA_PRIVILEGE, enable, true, out _);
+            if (result != 0)
+            {
+                // 0xC0000061 = STATUS_PRIVILEGE_NOT_HELD — 正常，静默忽略
+                // 其他错误也静默忽略，不影响后续操作
+            }
+        }
+        catch
+        {
+            // 静默忽略
+        }
     }
 
     public static void SetSystemInfo(SystemInformationClass infoClass, long value = 0)

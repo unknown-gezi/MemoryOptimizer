@@ -16,7 +16,7 @@ public static class MemSwap
     /// </summary>
     public static void EmptyWorkingSets()
     {
-        NtInterop.SetPrivilege(true);
+        NtInterop.SetPrivilegeSilent(true);
         NtInterop.SetSystemInfo(NtInterop.SystemInformationClass.SystemMemoryListInformation, 0x00000004);
     }
 
@@ -27,7 +27,7 @@ public static class MemSwap
     /// </summary>
     public static void FlushFileCache()
     {
-        NtInterop.SetPrivilege(true);
+        NtInterop.SetPrivilegeSilent(true);
         var os = NtInterop.GetOsVersion();
         if (os is { Major: 10, Build: >= 17763 })
         {
@@ -47,7 +47,7 @@ public static class MemSwap
     /// </summary>
     public static void FlushModifiedList()
     {
-        NtInterop.SetPrivilege(true);
+        NtInterop.SetPrivilegeSilent(true);
         NtInterop.SetSystemInfo(NtInterop.SystemInformationClass.SystemMemoryListInformation, 0x00000002);
     }
 
@@ -57,7 +57,7 @@ public static class MemSwap
     /// </summary>
     public static void PurgeStandbyList()
     {
-        NtInterop.SetPrivilege(true);
+        NtInterop.SetPrivilegeSilent(true);
         NtInterop.SetSystemInfo(NtInterop.SystemInformationClass.SystemMemoryListInformation, 0x00000001);
     }
 
@@ -66,7 +66,7 @@ public static class MemSwap
     /// </summary>
     public static void PurgeLowPriorityStandbyList()
     {
-        NtInterop.SetPrivilege(true);
+        NtInterop.SetPrivilegeSilent(true);
         NtInterop.SetSystemInfo(NtInterop.SystemInformationClass.SystemMemoryListInformation, 0x00000008);
     }
 
@@ -76,7 +76,7 @@ public static class MemSwap
     /// </summary>
     public static void RegistryReconciliation()
     {
-        NtInterop.SetPrivilege(true);
+        NtInterop.SetPrivilegeSilent(true);
         NtInterop.SetSystemInfo(NtInterop.SystemInformationClass.SystemRegistryReconciliationInformation, 0);
     }
 
@@ -86,7 +86,7 @@ public static class MemSwap
     /// </summary>
     public static void CombinePhysicalMemory()
     {
-        NtInterop.SetPrivilege(true);
+        NtInterop.SetPrivilegeSilent(true);
         NtInterop.SetSystemInfo(NtInterop.SystemInformationClass.SystemCombinePhysicalMemoryInformation, 0);
     }
 
