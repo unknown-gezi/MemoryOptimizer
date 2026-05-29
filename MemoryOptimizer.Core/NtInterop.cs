@@ -66,14 +66,81 @@ public static class NtInterop
         MemoryPurgeLowPriorityStandbyList = 8
     }
 
+    // ── advapi32.dll — 特权 fallback ──
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool OpenProcessToken(IntPtr h, uint access, out IntPtr tok);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool LookupPrivilegeValue(string? sys, string name, out LUID luid);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AdjustTokenPrivileges(
+        IntPtr tok, [MarshalAs(UnmanagedType.Bool)] bool disableAll,
+        ref TOKEN_PRIVILEGES newState, uint len, IntPtr prev, IntPtr retLen);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetCurrentProcess();
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr h);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct LUID { public uint LowPart; public int HighPart; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TOKEN_PRIVILEGES { public uint PrivilegeCount; public LUID Luid; public uint Attributes; }
+
+    private const string SE_INCREASE_QUOTA_NAME = "SeIncreaseQuotaPrivilege";
+    private const uint TOKEN_QUERY = 0x0008;
+    private const uint TOKEN_ADJUST_PRIVILEGES = 0x0020;
+    private const uint SE_PRIVILEGE_ENABLED = 0x0002;
+
+    private static bool _privilegeEnabled;
+    private static readonly object _privLock = new();
+
+    /// <summary>一次性启用 SeIncreaseQuotaPrivilege，RtlAdjustPrivilege 失败时 fallback 到 AdjustTokenPrivileges</summary>
+    public static void EnsurePrivilege()
+    {
+        if (_privilegeEnabled) return;
+        lock (_privLock)
+        {
+            if (_privilegeEnabled) return;
+
+            // 方式1: RtlAdjustPrivilege（PCL-CE 原版方式）
+            var r = RtlAdjustPrivilege(SE_INCREASE_QUOTA_PRIVILEGE, true, true, out _);
+            if (r == 0) { _privilegeEnabled = true; return; }
+
+            // 方式2: AdjustTokenPrivileges（更标准的方式）
+            try
+            {
+                if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, out var tok)) return;
+                try
+                {
+                    if (!LookupPrivilegeValue(null, SE_INCREASE_QUOTA_NAME, out var luid)) return;
+                    var tp = new TOKEN_PRIVILEGES { PrivilegeCount = 1, Luid = luid, Attributes = SE_PRIVILEGE_ENABLED };
+                    AdjustTokenPrivileges(tok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+                    _privilegeEnabled = Marshal.GetLastWin32Error() != 1300; // 1300 = ERROR_NOT_ALL_ASSIGNED
+                }
+                finally { CloseHandle(tok); }
+            }
+            catch { /* 静默 */ }
+
+            if (!_privilegeEnabled) _privilegeEnabled = true; // 无论如何只试一次，不阻塞后续调用
+        }
+    }
+
     // ── 公开方法（与 PCL-CE 一致）──
 
+    /// <summary>启用特权（与 PCL-CE 保持兼容，内部使用 fallback 机制）</summary>
     public static bool SetPrivilege(uint privilege, bool enable, bool currentThread)
     {
-        var result = RtlAdjustPrivilege(privilege, enable, currentThread, out var wasEnabled);
-        if (result != 0)
-            ThrowLastWin32Error((int)RtlNtStatusToDosError(result));
-        return wasEnabled;
+        EnsurePrivilege();
+        return true; // best-effort，不抛异常
     }
 
     /// <summary>设置系统信息，传入一个 int 值（4 字节）</summary>

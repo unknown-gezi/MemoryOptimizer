@@ -91,7 +91,7 @@ static int Run(string[] args, bool isDoubleClick)
     }
 }
 
-static void WaitForExit() { Console.Write("\n按任意键退出..."); Console.ReadKey(true); }
+static void WaitForExit() { try { Console.Write("\n按任意键退出..."); Console.ReadKey(true); } catch { } }
 static bool IsAdministrator() => new System.Security.Principal.WindowsPrincipal(
     System.Security.Principal.WindowsIdentity.GetCurrent())
     .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
